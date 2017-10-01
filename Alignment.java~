@@ -1,0 +1,301 @@
+import java.io.*;
+import java.util.*;
+
+class Alignment
+{
+	int nh=6,no=4,ni=960;
+	float x[]=new float[ni+1];
+	float h[]=new float[nh+1];
+	float o[]=new float[no];
+	float t[]=new float[no];
+	float Whx[][]=new float [nh+1][ni+1];
+	float Woh[][]=new float[no][nh+1];
+	float learningRate=0.3f;
+	float momentum=0.3f;
+	float maxIter=10000;
+	float minError=0.05f;
+	float delK[]=new float[no];  
+	float delH[]=new float[nh+1];
+	float w1[][]=new float [no][nh+1];
+	float w2[][]=new float [nh+1][ni+1];
+	String poses[]={"left","right","straight","up"};
+	void randomWeights()
+	{
+		for(int i=0;i<nh+1;i++)
+		for(int j=0;j<ni+1;j++)
+			Whx[i][j]=((float)(Math.random()*100)-50)/100f;
+			
+		for(int i=0;i<no;i++)
+		for(int j=0;j<nh+1;j++)
+			Woh[i][j]=((float)(Math.random()*100)-50)/100f;
+	}
+	
+	float sigmoid(float f)
+	{
+		return (float)(1/(1+Math.exp(-f)));
+	}
+	
+	String getFileName(String s)
+	{
+		int i1=0;
+		
+		for(int i=s.length()-1;i>=0;i--)
+			if(s.charAt(i)=='/')
+			{
+				i1=i+1;
+				break;
+			}
+			
+		String file_name="";
+		
+		for(int i=i1;i<s.length();i++)
+		file_name=file_name+s.charAt(i);
+		
+		return file_name;
+	}
+	void getTargetValue(String s)//chage it 
+	{
+		for(int i=0;i<no;i++)
+			t[i]=0;
+		
+		int i1=0,i2=0,i3=0;
+		for(int i=s.length()-1;i>=0;i--)
+			if(s.charAt(i)=='/')
+			{
+				i1=i+1;
+				break;
+			}
+		
+		for(int i=i1;i<s.length();i++)
+			if(s.charAt(i)=='_')
+			{
+				i2=i+1;
+				for(int j=i2;j<s.length();j++)
+				{
+					if(s.charAt(j)=='_')
+					{
+						i3=j;
+						break;
+					}
+				}
+				
+				break;
+			}
+		
+		String pose="";
+		
+		for(int i=i2;i<i3;i++)
+			pose=pose+s.charAt(i);
+		
+		System.out.println(pose);
+		int flag=0;
+		
+		for(int i=0;i<no;i++)
+		if(pose.equals(poses[i]))
+		{
+			t[i]=1;
+			flag=1;
+			break;
+		}
+		
+		if(flag==0)
+		System.out.println("-------ERROR-------");
+	}
+	
+	void feedForward()
+	{
+		float sum=0;
+		h[0]=1f;
+		for(int i=1;i<nh+1;i++)
+		{
+			sum=0;
+			for(int j=0;j<ni+1;j++)
+				sum=sum+Whx[i][j]*x[j];
+
+			h[i]=sigmoid(sum);
+		}
+
+		for(int i=0;i<no;i++)
+		{
+			sum=0;
+
+			for(int j=0;j<nh+1;j++)
+				sum=sum+Woh[i][j]*h[j];
+
+			o[i]=sigmoid(sum);
+		}
+	}
+
+	void calculateError()
+	{ 	
+		float sum=0;
+		
+		for(int k=0; k<no ;k++)
+		{
+			delK[k]=o[k]*(1-o[k])*(t[k]-o[k]); 
+		}
+
+		for(int k=0;k<nh+1;k++)
+		{
+			sum=0;
+
+			for(int i=0;i<no;i++)
+				sum+= Woh[i][k]*delK[i];//change
+
+			delH[k]=h[k]*(1-h[k])*sum;//change
+		}
+	}
+
+	void updateWeights()
+	{
+	
+		float delOH=0f,delHX=0f;
+
+		for(int i=0;i<no;i++)
+		{
+			for(int j=0;j<nh+1;j++)
+			{
+				delOH=learningRate*delK[i]*h[j] - momentum*w1[i][j];
+				Woh[i][j]=Woh[i][j]+delOH;
+				w1[i][j]=delOH;
+			}
+		}
+
+		for(int i=1;i<nh+1;i++)
+		{
+			for(int j=0;j<ni+1;j++)
+			{
+				delHX=learningRate*delH[i]*x[j]-momentum*w2[i][j];
+				Whx[i][j]=Whx[i][j]+delHX;
+				w2[i][j]=delHX;
+			}
+
+		}
+	}
+
+	float calculateOverallError()
+	{
+		float overallError=0.0f;
+
+		for(int i=0;i<no;i++)
+		overallError=0.5f*(float)(Math.pow((t[i]-o[i]),2));
+
+
+		return overallError;
+	}
+
+	void backPropogate() //
+	{
+		feedForward();
+		calculateError();
+		updateWeights();
+
+	}
+	
+	public static void main(String [] args)throws IOException
+	{
+		BufferedReader k=new BufferedReader(new InputStreamReader(System.in));
+		
+		Alignment obj=new Alignment();
+		
+		//Training the network
+		
+		obj.randomWeights();
+		float er=100f;
+		int iter=1;
+		while(er>obj.minError && iter<obj.maxIter)
+		{
+			er=0;
+			FileReader fr = new FileReader("list/straighteven_train.list");
+			BufferedReader br=new BufferedReader(fr);
+			String s;
+			
+		
+			while((s=br.readLine())!=null)
+			{
+				obj.x[0]=1;
+				
+				FileInputStream fileInputStream = new FileInputStream(s.substring(1,s.length()));
+			   	DataInputStream dis = new DataInputStream(fileInputStream);
+			    
+			  	for (int c=1;c<961; c++ ) 
+					obj.x[c] = dis.readUnsignedByte()/255.0f;
+	
+				obj.getTargetValue(s);
+				obj.backPropogate();
+				er=er+obj.calculateOverallError();
+			}
+		
+			System.out.println(iter+" "+er);
+			iter++;
+		}//Training Network ends here
+		
+		
+		// -------TESTING begins here
+		FileReader fr=new FileReader("list/straighteven_test2.list");
+		BufferedReader br=new BufferedReader(fr);
+		String s;
+		float acc=0.0f;
+		int size=0;
+		while((s=br.readLine())!=null)
+		{
+			obj.x[0]=1;
+			String file_name=obj.getFileName(s);
+			FileInputStream fileInputStream = new FileInputStream(s.substring(1,s.length()));
+		   	DataInputStream dis = new DataInputStream(fileInputStream);
+		    
+		  	for (int c=1;c<961; c++ ) 
+				obj.x[c] = dis.readUnsignedByte()/255.0f;
+			
+			obj.feedForward();
+			obj.getTargetValue(s);
+			
+			float max=0f;
+			int indexOfOutput=-1;
+			int indexOfTarget=-1;
+			
+			for(int i=0;i<obj.no;i++)
+				if(max<obj.o[i])
+				{
+					indexOfOutput=i;
+					max=obj.o[i];
+					
+				}
+				
+			for(int i=0;i<obj.no;i++)
+				if(obj.t[i]==1)
+				indexOfTarget=i;
+			
+			System.out.println(obj.poses[indexOfOutput]+"\t\t"+obj.poses[indexOfTarget]+"\t\t"+file_name);
+			
+			if(indexOfOutput==indexOfTarget)
+			acc++;
+			
+			size++;
+		}
+		
+		System.out.println("Accuracy="+((acc/size)*100)+"%");
+	}
+	
+	/*public static void main(String [] args)throws IOException
+	{
+		BufferedReader k=new BufferedReader(new InputStreamReader(System.in));
+		
+		Alignment obj=new Alignment();
+		
+		FileReader fr = new FileReader("list/all_train.list");
+		BufferedReader br=new BufferedReader(fr);
+		String s;
+		
+	
+		while((s=br.readLine())!=null)
+		{
+			String file_name=obj.getFileName(s);
+			
+			System.out.print(file_name+"\t");
+			obj.getTargetValue(s);
+		}
+			
+		
+	}*/
+}				
