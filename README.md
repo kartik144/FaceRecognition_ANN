@@ -17,8 +17,8 @@ The node structure for each layer is as follows:
 |                       | Input Units   | Hidden Units | Outputs |
 | --------------------- | ------------- | ------------ | --------|
 | Sunglasses Recognizer | 961 | 4 | 1 |
-| Sunglasses Recognizer | 961 | 21 | 20 |
-| Sunglasses Recognizer | 961 | 7 | 21 |
+| Face Recognizer | 961 | 21 | 20 |
+| Pose Recognizer | 961 | 7 | 21 |
 
 ## Testing
 The neural network gave following average accuracy on testing:
@@ -26,5 +26,5 @@ The neural network gave following average accuracy on testing:
 |                       | Accuracy | 
 | --------------------- | ------ |
 | Sunglasses Recognizer | 97.58% | 
-| Sunglasses Recognizer | 98.75% | 
-| Sunglasses Recognizer | 91.84% | 
+| Face Recognizer | 98.75% | 
+| Pose Recognizer | 91.84% | 
